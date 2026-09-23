@@ -9,6 +9,9 @@
     "dev": "node --watch server.js",
     "test": "node --test"
   },
+  "dependencies": {
+    "serverless-http": "^3.2.0"
+  },
   "engines": {
     "node": ">=20"
   }
