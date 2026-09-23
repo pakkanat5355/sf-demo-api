@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import { URL } from 'node:url';
 
 const port = Number(process.env.PORT || 5080);
-const publicBaseUrl = (process.env.PUBLIC_BASE_URL || `http://localhost:${port}`).replace(/\/$/, '');
+const configuredPublicBaseUrl = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
 const tokenTtlSeconds = Number(process.env.TOKEN_TTL_SECONDS || 3600);
 const credentials = {
   clientId: process.env.DEMO_CLIENT_ID || 'genesys-demo-client',
@@ -22,6 +22,13 @@ const tokens = new Map();
 function json(res, status, body) {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*', 'cache-control': 'no-store' });
   res.end(JSON.stringify(body));
+}
+
+function getPublicBaseUrl(req) {
+  if (configuredPublicBaseUrl) return configuredPublicBaseUrl;
+  const protocol = req.headers['x-forwarded-proto'] || 'http';
+  const host = req.headers['x-forwarded-host'] || req.headers.host || `localhost:${port}`;
+  return `${protocol}://${host}`;
 }
 
 function readBody(req) {
@@ -51,7 +58,7 @@ function isAuthorized(req) {
 }
 
 function contactResponse(contact, req) {
-  const base = publicBaseUrl || `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}`;
+  const base = getPublicBaseUrl(req);
   return {
     success: true,
     contact,
@@ -78,7 +85,7 @@ const server = http.createServer(async (req, res) => {
       const validPassword = form.get('username') === credentials.username && form.get('password') === credentials.password;
       if (!validClient || (grantType === 'password' && !validPassword) || !['password', 'client_credentials'].includes(grantType)) return json(res, 400, { error: 'invalid_grant', error_description: 'Invalid client, credentials, or grant_type.' });
       const accessToken = issueToken();
-      return json(res, 200, { access_token: accessToken, token_type: 'Bearer', expires_in: tokenTtlSeconds, instance_url: publicBaseUrl, issued_at: String(Date.now()) });
+      return json(res, 200, { access_token: accessToken, token_type: 'Bearer', expires_in: tokenTtlSeconds, instance_url: getPublicBaseUrl(req), issued_at: String(Date.now()) });
     }
 
     if (req.method === 'GET' && url.pathname.startsWith('/screenpop/')) {
@@ -102,5 +109,5 @@ const server = http.createServer(async (req, res) => {
   } catch (error) { json(res, 500, { error: 'server_error', message: error.message }); }
 });
 
-if (process.argv[1] && process.argv[1].endsWith('server.js')) server.listen(port, () => console.log(`sf-demo-api listening on ${publicBaseUrl}`));
+if (process.argv[1] && process.argv[1].endsWith('server.js')) server.listen(port, '0.0.0.0', () => console.log(`sf-demo-api listening on port ${port}`));
 export { server, contacts, credentials, issueToken };

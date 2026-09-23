@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: sf-demo-api
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: DEMO_CLIENT_ID
+        value: genesys-demo-client
+      - key: DEMO_CLIENT_SECRET
+        generateValue: true
+      - key: DEMO_USERNAME
+        value: genesys@example.com
+      - key: DEMO_PASSWORD
+        generateValue: true
+      - key: TOKEN_TTL_SECONDS
+        value: "3600"
